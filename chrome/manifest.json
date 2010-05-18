@@ -1,0 +1,22 @@
+{
+	"name": "Chrome-o-tile",
+	"version": "0.1",
+	"description": "Tile windows. Stick windows. Don't overlap them!",
+	"content_scripts": [
+		{
+			"js": ["chrome-o-tile.js"],
+			"matches": [
+				"http://*/*",
+				"https://*/*",
+				"file://*/*"
+			]
+		}
+	],
+	"icons": {
+		"32": "icon_32.png",
+		"48": "icon_48.png"
+	},
+	"permissions": ["tabs"],
+	"background_page": "background.html",
+	"update_url": "http://clients2.google.com/service/update2/crx"
+}
