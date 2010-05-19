@@ -128,6 +128,10 @@ function update(w, callback) {
 		return;
 	}
 	chrome.windows.get(father.id, function updateParent(parent) {
+		if (!parent) {
+			console.info('Father is gone', father);
+			return;
+		}
 		var position = {
 			left: parent.left + parent.width,
 			top: parent.top
