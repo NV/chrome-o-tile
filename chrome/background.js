@@ -148,11 +148,12 @@ function updateChildren(children) {
 		console.warn('nothing to update');
 		return;
 	}
-	update(children.shift(), function next() {
+	function next() {
 		var first = children.shift();
 		if (!first) return;
 		update(first, next);
-	});
+	}
+	next();
 }
 
 
