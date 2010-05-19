@@ -37,7 +37,7 @@ Windows.prototype.remove = function remove(id) {
 	//      \
 	//       D
 	//
-	// A.remove(B)
+	// remove(B)
 	//
 	// A - C
 	//  \
