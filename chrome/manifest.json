@@ -1,5 +1,5 @@
 {
-	"name": "Chrome-o-tile",
+	"name": "Chrome-o-Tile",
 	"version": "1.0",
 	"description": "Tile windows. Stick windows. Don't overlap them!",
 	"content_scripts": [
