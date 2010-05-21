@@ -10,7 +10,7 @@ Windows.prototype.get = function get(id) {
 			return this[i];
 		}
 	}
-	console.warn('Id '+id+' not found');
+	console.warn(arguments.callee.caller.name +" didn't find #"+id);
 	return null;
 };
 
@@ -111,6 +111,9 @@ var created;
 chrome.windows.onCreated.addListener(function rememberCreated(w) {
 	created = w;
 	var focused = all.get(focusedId);
+	if (!focused) {
+		console.warn('Something wrong with focused window.')
+	}
 	if (focused.children) {
 		focused.children.push(w);
 	} else {
@@ -129,7 +132,7 @@ function update(w, callback) {
 	}
 	chrome.windows.get(father.id, function updateParent(parent) {
 		if (!parent) {
-			console.info('Father is gone', father);
+			console.warn('Father is gone', father);
 			return;
 		}
 		var position = {
@@ -149,7 +152,6 @@ function update(w, callback) {
 
 function updateChildren(children) {
 	if (!children || !children.length) {
-		console.warn('nothing to update');
 		return;
 	}
 	function next() {
