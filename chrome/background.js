@@ -1,5 +1,6 @@
 var MIN_WIDTH = 400;
 var MAX_WIDTH = 1024;
+var NARROW_PARENT_IF_NOT_FIT = true;
 
 function Windows(){}
 Windows.prototype = [];
@@ -136,16 +137,20 @@ function update(w, callback) {
 			return;
 		}
 		var position = {
-			left: parent.left + parent.width,
 			top: parent.top
 		};
 		if (!w.children || !w.children.length) {
-			var emptyWidth = screen.width - position.left;
-			position.width = Math.min(Math.max(emptyWidth, MIN_WIDTH), MAX_WIDTH);
-			if (position.width === parent.width) {
-				console.warn("Width didn't change");
+			var emptyWidth = screen.width - parent.left - parent.width;
+			position.width = Math.min(emptyWidth, MAX_WIDTH);
+			if (NARROW_PARENT_IF_NOT_FIT && position.width < MIN_WIDTH) {
+				position.width = MIN_WIDTH;
+				parent.width += emptyWidth - MIN_WIDTH;
+				chrome.windows.update(father.id, {
+					width: parent.width
+				}, function empty(){});
 			}
 		}
+		position.left = parent.left + parent.width;
 		chrome.windows.update(w.id, position, callback);
 	});
 }
