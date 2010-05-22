@@ -2,6 +2,25 @@ var MIN_WIDTH = 400;
 var MAX_WIDTH = 1024;
 var NARROW_PARENT_IF_NOT_FIT = true;
 
+
+function Window(id){
+	this.id = id;
+	this.parent = false;
+	this.children = [];
+}
+Window.prototype = new Number;
+Window.prototype.valueOf = function valueOf() {
+	return this.id;
+};
+Window.prototype.toString = function toString() {
+	var result = this.id.toString();
+	if (this.children.length) {
+		result += " ("+ this.children.join(', ') +")";
+	}
+	return result;
+};
+
+
 function Windows(){}
 Windows.prototype = [];
 
@@ -21,6 +40,9 @@ Windows.prototype.add = function add(w) {
 		if (this[i].id === w.id) {
 			return this;
 		}
+	}
+	if (!(w instanceof Window)) {
+		w = new Window(w.id);
 	}
 	this.push(w);
 	return this;
@@ -72,6 +94,10 @@ Windows.prototype.remove = function remove(id) {
 	return null;
 };
 
+Windows.prototype.toString = function toString() {
+	return this.join('\n ');
+};
+
 
 var all = new Windows;
 chrome.windows.getAll(null, function rememberAll(windows) {
@@ -89,19 +115,17 @@ function getChildrenOf(w) {
 	return children;
 }
 
-function getChildren(id) {
-	var w = all.get(id);
-	return getChildrenOf(w);
-}
-
 var OS_WINDOWS = navigator.platform.indexOf("Win") > -1;
 
 var focusedId;
 chrome.windows.getLastFocused(function rememberFocused(w) {
-	focusedId = w.id;
+	if (w.id > 0) {
+		focusedId = w.id;
+	}
 });
 chrome.windows.onFocusChanged.addListener(function rememberFocusedId(id) {
-	// http://groups.google.com/a/chromium.org/group/chromium-extensions/browse_frm/thread/b8044b4eb8ba1d3f
+	// http://crbug.com/39882
+	// http://crbug.com/44706
 	if (id === focusedId || OS_WINDOWS && !all.get(id)) {
 		return null;
 	}
@@ -111,18 +135,16 @@ chrome.windows.onFocusChanged.addListener(function rememberFocusedId(id) {
 var created;
 chrome.windows.onCreated.addListener(function rememberCreated(w) {
 	created = w;
+	var win = new Window(w.id);
 	var focused = all.get(focusedId);
-	if (!focused) {
-		console.warn('Something wrong with focused window.')
-	}
-	if (focused.children) {
-		focused.children.push(w);
+	if (focused) {
+		win.parent = focused;
+		focused.children.push(win);
 	} else {
-		focused.children = [w];
+		console.warn('Something wrong with focused window.');
 	}
-	w.parent = focused;
-	all.add(w);
-	update(w);
+	all.add(win);
+	update(win, function empty(){});
 });
 
 function update(w, callback) {
@@ -156,7 +178,7 @@ function update(w, callback) {
 }
 
 function updateChildren(children) {
-	if (!children || !children.length) {
+	if (!children.length) {
 		return;
 	}
 	function next() {
@@ -171,7 +193,8 @@ function updateChildren(children) {
 chrome.extension.onRequest.addListener(function requested(request) {
 	if (request.method === 'update') {
 		chrome.windows.getCurrent(function gotCurrent(w){
-			var children = getChildren(w.id);
+			var win = all.get(w.id);
+			var children = getChildrenOf(win);
 			updateChildren(children);
 		});
 	} else if (request.method && request.popup) {
