@@ -80,13 +80,14 @@ Windows.prototype.remove = function remove(id) {
 				if (w.children) {
 					// Add children to a parent
 					w.parent.children = w.parent.children.concat(w.children);
-					// Update link to a new parent
-					for (var p=0; p<w.children.length; p++) {
-						delete w.children[p].parent;
-						w.children[p].parent = w.parent;
-					}
 				}
-
+			}
+			if (w.children) {
+				// Update a link to a new parent
+				for (var p=0; p<w.children.length; p++) {
+					delete w.children[p].parent;
+					w.children[p].parent = w.parent;
+				}
 			}
 			return this.splice(i, 1)[0];
 		}
