@@ -1,14 +1,12 @@
 {
 	"name": "Chrome-o-Tile",
-	"version": "1.1.1",
+	"version": "1.2",
 	"description": "Tile and stick windows without overlap.",
 	"content_scripts": [
 		{
 			"js": ["chrome-o-tile.js"],
 			"matches": [
-				"http://*/*",
-				"https://*/*",
-				"file://*/*"
+				"<all_urls>"
 			]
 		}
 	],
