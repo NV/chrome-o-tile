@@ -8,7 +8,7 @@ function Window(id){
 	this.parent = false;
 	this.children = [];
 }
-Window.prototype = new Number;
+Window.prototype.__proto__ = Number.prototype;
 Window.prototype.valueOf = function valueOf() {
 	return this.id;
 };
@@ -22,7 +22,8 @@ Window.prototype.toString = function toString() {
 
 
 function Windows(){}
-Windows.prototype = [];
+
+Windows.prototype.__proto__ = Array.prototype;
 
 Windows.prototype.get = function get(id) {
 	for (var i=0; i<this.length; i++) {
