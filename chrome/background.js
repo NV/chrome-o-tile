@@ -128,7 +128,7 @@ chrome.windows.getLastFocused(function rememberFocused(w) {
 chrome.windows.onFocusChanged.addListener(function rememberFocusedId(id) {
 	// http://crbug.com/39882
 	// http://crbug.com/44706
-	if (id === focusedId || OS_WINDOWS && !all.get(id)) {
+	if (id === chrome.windows.WINDOW_ID_NONE || OS_WINDOWS && !all.get(id)) {
 		return null;
 	}
 	focusedId = id;
