@@ -1,13 +1,25 @@
+var currentTestName = '';
+
 // QUnit-like adapter
-function equals(expected, actual){
-	chrome.test.assertEq(expected, actual)
+function equals(expected, actual) {
+	if (expected !== actual) {
+		console.warn('NOT EQUAL', currentTestName, expected, actual);
+	} else {
+		console.log('PASS', currentTestName, actual);
+	}
 }
-function test(func){
-	chrome.test.tests.unshift(func);
-	chrome.test.runNextTest();
+
+function test(func) {
+	currentTestName = func.name;
+	func();
 }
+
 function ok(bool, message) {
-	chrome.test.assertTrue(bool, message);
+	if (bool) {
+		console.log('PASS', currentTestName, message);
+	} else {
+		console.warn('FAIL', currentTestName, message);
+	}
 }
 
 
@@ -55,7 +67,7 @@ test(function Window_remove(){
 	equals(0, ids[1].children.length);
 });
 
-test(function _getChildrenOf(){
+test(function _getDescendantsOf(){
 	var w = {
 		id: 1,
 		children: [
@@ -67,7 +79,7 @@ test(function _getChildrenOf(){
 			{id: 14}
 		]
 	};
-	var children = getChildrenOf(w);
+	var children = getDescendantsOf(w);
 	equals(5, children.length);
 	equals(11, children[0].id);
 	equals(131, children[3].id);
