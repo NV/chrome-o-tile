@@ -17,7 +17,7 @@ Window.prototype.valueOf = function valueOf() {
 Window.prototype.toString = function toString() {
 	var result = this.id.toString();
 	if (this.children.length) {
-		result += " ("+ this.children.join(', ') +")";
+		result += ': ' + this.children.join(', ');
 	}
 	return result;
 };
