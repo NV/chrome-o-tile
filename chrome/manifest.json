@@ -1,10 +1,11 @@
 {
-	"name": "Tile-n-Stick",
+	"name": "Tile-o-some",
 	"version": "1.2.2",
-	"description": "Tile and stick windows without overlap.",
+	"description": "Opens new windows right next to the current. Don’t overlap.",
+	"manifest_version": 2,
 	"content_scripts": [
 		{
-			"js": ["chrome-o-tile.js"],
+			"js": ["tile-o-some.js"],
 			"matches": [
 				"<all_urls>"
 			]
@@ -15,6 +16,9 @@
 		"48": "icon_48.png"
 	},
 	"permissions": ["tabs"],
-	"background_page": "background.html",
+	"background": {
+		"scripts": ["background.js"],
+		"persistent": true
+	},
 	"update_url": "http://clients2.google.com/service/update2/crx"
 }
