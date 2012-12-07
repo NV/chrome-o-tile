@@ -1,3 +1,5 @@
+'use strict';
+
 var MIN_WIDTH = 400;
 var MAX_WIDTH = 1024;
 var NARROW_PARENT_IF_NOT_FIT = true;
@@ -31,7 +33,7 @@ Windows.prototype.get = function get(id) {
 			return this[i];
 		}
 	}
-	console.warn(arguments.callee.caller.name +" didn't find #"+id);
+	console.warn("Couldn’t find #"+id);
 	return null;
 };
 

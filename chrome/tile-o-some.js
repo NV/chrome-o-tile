@@ -1,3 +1,5 @@
+'use strict';
+
 // Simplified version of http://code.google.com/p/jquery-debounce/
 Function.prototype.debounce = function debounce(timeout, invokeAsap) {
 	var fn = this, timer;
