@@ -5,16 +5,15 @@ var MAX_WIDTH = 1024;
 var NARROW_PARENT_IF_NOT_FIT = true;
 
 
-function Window(id){
+function BrowserWindow(id){
 	this.id = id;
 	this.parent = false;
 	this.children = [];
 }
-Window.prototype.__proto__ = Number.prototype;
-Window.prototype.valueOf = function valueOf() {
+BrowserWindow.prototype.valueOf = function valueOf() {
 	return this.id;
 };
-Window.prototype.toString = function toString() {
+BrowserWindow.prototype.toString = function toString() {
 	var result = this.id.toString();
 	if (this.children.length) {
 		result += ': ' + this.children.join(', ');
@@ -44,8 +43,9 @@ Windows.prototype.add = function add(w) {
 			return this;
 		}
 	}
-	if (!(w instanceof Window)) {
-		w = new Window(w.id);
+	if (!(w instanceof BrowserWindow)) {
+		// Only for testing
+		w = new BrowserWindow(w.id);
 	}
 	this.push(w);
 	return this;
@@ -108,13 +108,16 @@ chrome.windows.getAll(null, function rememberAll(windows) {
 	all.merge(windows);
 });
 
-function getChildrenOf(w) {
+function getDescendantsOf(w) {
 	var children = [];
 	if (w && w.children) {
 		for (var i=0; i<w.children.length; i++) {
 			children.push(w.children[i]);
-			children = children.concat(getChildrenOf(w.children[i]));
+			children = children.concat(getDescendantsOf(w.children[i]));
 		}
+	} else {
+		console.error('No children');
+		debugger;
 	}
 	return children;
 }
@@ -136,10 +139,9 @@ chrome.windows.onFocusChanged.addListener(function rememberFocusedId(id) {
 	focusedId = id;
 });
 
-var created;
+
 chrome.windows.onCreated.addListener(function rememberCreated(w) {
-	created = w;
-	var win = new Window(w.id);
+	var win = new BrowserWindow(w.id);
 	var focused = all.get(focusedId);
 	if (focused) {
 		win.parent = focused;
@@ -157,29 +159,49 @@ function update(w, callback) {
 		console.warn('No parent', w);
 		return;
 	}
-	chrome.windows.get(father.id, function updateParent(parent) {
-		if (!parent) {
-			console.warn('Father is gone', father);
-			return;
-		}
+
+	getLastNonMinimized(father.id, function updateParent(parent) {
 		var position = {
-			top: parent.top
+			top: 0,
+			left: 0
 		};
-		if (!w.children || !w.children.length) {
-			var emptyWidth = screen.width - parent.left - parent.width;
-			position.width = Math.min(emptyWidth, MAX_WIDTH);
-			if (NARROW_PARENT_IF_NOT_FIT && position.width < MIN_WIDTH) {
-				position.width = MIN_WIDTH;
-				parent.width += emptyWidth - MIN_WIDTH;
-				chrome.windows.update(father.id, {
-					width: parent.width
-				}, function empty(){});
+		if (parent) {
+			position.top = parent.top;
+			if (!w.children || !w.children.length) {
+				var emptyWidth = screen.width - parent.left - parent.width;
+				position.width = Math.min(emptyWidth, MAX_WIDTH);
+				if (NARROW_PARENT_IF_NOT_FIT && position.width < MIN_WIDTH) {
+					position.width = MIN_WIDTH;
+					parent.width += emptyWidth - MIN_WIDTH;
+					chrome.windows.update(father.id, {
+						width: parent.width
+					}, function empty(){});
+				}
 			}
+			position.left = parent.left + parent.width;
 		}
-		position.left = parent.left + parent.width;
 		chrome.windows.update(w.id, position, callback);
 	});
 }
+
+
+function getLastNonMinimized(id, callback) {
+	if (id < 0) {
+		callback(null);
+	}
+	chrome.windows.get(id, function(w) {
+		if (w.state === 'minimized') {
+			var parent = all.get(w.id).parent;
+			if (!parent) {
+				callback(null);
+			}
+			getLastNonMinimized(parent.id, callback);
+		} else {
+			callback(w);
+		}
+	});
+}
+
 
 function updateChildren(children) {
 	if (!children.length) {
@@ -198,7 +220,7 @@ chrome.extension.onRequest.addListener(function requested(request) {
 	if (request.method === 'update') {
 		chrome.windows.getCurrent(function gotCurrent(w){
 			var win = all.get(w.id);
-			var children = getChildrenOf(win);
+			var children = getDescendantsOf(win);
 			updateChildren(children);
 		});
 	} else if (request.method && request.popup) {
@@ -208,6 +230,6 @@ chrome.extension.onRequest.addListener(function requested(request) {
 
 chrome.windows.onRemoved.addListener(function removed(windowId) {
 	var w = all.remove(windowId);
-	var children = getChildrenOf(w);
+	var children = getDescendantsOf(w);
 	updateChildren(children);
 });
