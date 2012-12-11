@@ -1,18 +1,67 @@
 'use strict';
 
 var MIN_WIDTH = 400;
-var MAX_WIDTH = 1024;
 var NARROW_PARENT_IF_NOT_FIT = true;
 
-
-function BrowserWindow(id){
-	this.id = id;
-	this.parent = false;
-	this.children = [];
+function getMaxWidth() {
+	return screen.availWidth;
 }
+
+
+function BrowserWindow() {
+	this.parent = null;
+	this.children = [];
+
+	// http://developer.chrome.com/extensions/windows.html#type-Window
+	this.id = 0;
+	this.focused = false;
+	this.top = 0;
+	this.left = 0;
+	this.width = 0;
+	this.height = 0;
+	this.tabs = [];
+	this.incognito = false;
+	this.incognito = false;
+	this.type = '';
+	this.state = '';
+	this.alwaysOnTop = false;
+}
+
+BrowserWindow.from = function(w) {
+	var browserWindow = new BrowserWindow();
+	browserWindow.merge(w);
+	return browserWindow;
+};
+
+BrowserWindow.prototype.get = function(getInfo, callback) {
+	var w = this;
+	if (typeof callback === 'undefined') {
+		callback = getInfo;
+		getInfo = null;
+	}
+	chrome.windows.get(w.id, getInfo, function(win) {
+		w.merge(win);
+		callback(w);
+	});
+};
+
+BrowserWindow.prototype.update = function(properties, callback) {
+	this.merge(properties);
+	chrome.windows.update(this.id, properties, callback || null);
+};
+
+BrowserWindow.prototype.merge = function(properties) {
+	var keys = Object.keys(properties);
+	for (var i = 0; i < keys.length; i++) {
+		var key = keys[i];
+		this[key] = properties[key];
+	}
+};
+
 BrowserWindow.prototype.valueOf = function valueOf() {
 	return this.id;
 };
+
 BrowserWindow.prototype.toString = function toString() {
 	var result = this.id.toString();
 	if (this.children.length) {
@@ -22,43 +71,25 @@ BrowserWindow.prototype.toString = function toString() {
 };
 
 
-function Windows(){}
+function WindowsDict() {}
 
-Windows.prototype.__proto__ = Array.prototype;
-
-Windows.prototype.get = function get(id) {
-	for (var i=0; i<this.length; i++) {
-		if (this[i].id === id) {
-			return this[i];
-		}
-	}
-	console.warn("Couldn’t find #"+id);
-	return null;
+WindowsDict.prototype.get = function(id, getInfo, callback) {
+	var w = this[id];
+	w.get(getInfo, callback);
 };
 
-Windows.prototype.add = function add(w) {
-	var i = this.length;
-	while (i--) {
-		if (this[i].id === w.id) {
-			return this;
-		}
+WindowsDict.prototype.add = function add(w) {
+	if (this[w.id]) {
+		console.info('window#' + w.id + ' is already in the dict');
 	}
 	if (!(w instanceof BrowserWindow)) {
 		// Only for testing
-		w = new BrowserWindow(w.id);
+		w = BrowserWindow.from(w);
 	}
-	this.push(w);
-	return this;
+	this[w.id] = w;
 };
 
-Windows.prototype.merge = function merge(windows) {
-	for (var i=0; i<windows.length; i++) {
-		this.add(windows[i]);
-	}
-	return this;
-};
-
-Windows.prototype.remove = function remove(id) {
+WindowsDict.prototype.remove = function remove(id) {
 	// A - B - C
 	//      \
 	//       D
@@ -69,43 +100,52 @@ Windows.prototype.remove = function remove(id) {
 	//  \
 	//   D
 
-	for (var i=0; i<this.length; ++i) {
-		var w = this[i];
-		if (w.id === id) {
-			if (w.parent) {
-				// Delete children
-				for (var j=0; j<w.parent.children.length; j++) {
-					if (w.parent.children[j].id === id) {
-						w.parent.children.splice(j, 1);
-						break;
-					}
-				}
-				if (w.children) {
-					// Add children to a parent
-					w.parent.children = w.parent.children.concat(w.children);
+	var w = this[id];
+	if (w) {
+		if (w.parent) {
+			// Delete children
+			for (var i = 0; i < w.parent.children.length; i++) {
+				if (w.parent.children[i].id === id) {
+					w.parent.children.splice(i, 1);
+					break;
 				}
 			}
-			if (w.children) {
-				// Update a link to a new parent
-				for (var p=0; p<w.children.length; p++) {
-					delete w.children[p].parent;
-					w.children[p].parent = w.parent;
-				}
-			}
-			return this.splice(i, 1)[0];
+			w.parent.children = w.parent.children.concat(w.children);
 		}
+		// Update a link to a new parent
+		for (var p = 0; p < w.children.length; p++) {
+			w.children[p].parent = w.parent;
+		}
+		var removed = this[id];
+		this[id] = null;
+		return removed;
+	} else {
+		console.warn('window#' + id + ' cannot be removed since it is not present.');
 	}
 	return null;
 };
 
-Windows.prototype.toString = function toString() {
-	return this.join('\n ');
+WindowsDict.prototype.getCurrent = function(callback) {
+	var dict = this;
+	chrome.windows.getCurrent(function gotCurrent(win) {
+		var w = dict[win.id];
+		w.merge(win);
+		callback(w);
+	});
+};
+
+WindowsDict.prototype.toString = function toString() {
+	return Object.keys(this).map(function(key) {
+		return this[key];
+	}).join('\n ');
 };
 
 
-var all = new Windows;
+var all = new WindowsDict;
 chrome.windows.getAll(null, function rememberAll(windows) {
-	all.merge(windows);
+	for (var i = 0; i < windows.length; i++) {
+		all.add(windows[i]);
+	}
 });
 
 function getDescendantsOf(w) {
@@ -133,7 +173,7 @@ chrome.windows.getLastFocused(function rememberFocused(w) {
 chrome.windows.onFocusChanged.addListener(function rememberFocusedId(id) {
 	// http://crbug.com/39882
 	// http://crbug.com/44706
-	if (id === chrome.windows.WINDOW_ID_NONE || OS_WINDOWS && !all.get(id)) {
+	if (id === chrome.windows.WINDOW_ID_NONE || OS_WINDOWS && !all[id]) {
 		return null;
 	}
 	focusedId = id;
@@ -141,11 +181,32 @@ chrome.windows.onFocusChanged.addListener(function rememberFocusedId(id) {
 
 
 chrome.windows.onCreated.addListener(function rememberCreated(w) {
-	var win = new BrowserWindow(w.id);
-	var focused = all.get(focusedId);
+	var win = BrowserWindow.from(w);
+	var focused = all[focusedId];
 	if (focused) {
-		win.parent = focused;
-		focused.children.push(win);
+		if (w.type == 'normal' && focused.children[0] && focused.children[0].type == 'normal') {
+			var child = focused.children[0];
+			win.get({populate: true}, function(w) {
+				chrome.tabs.move([w.tabs[0].id], {
+					windowId: child.id,
+					index: -1
+				}, function(tab) {
+					child.update({focused: true}, function() {
+						if (tab.length) {
+							console.warn('tab is an array');
+							tab = tab[0];
+						}
+						chrome.tabs.update(tab.id, {
+							active: true
+						})
+					});
+				});
+			});
+			return;
+		} else {
+			win.parent = focused;
+			focused.children.push(win);
+		}
 	} else {
 		console.warn('Something wrong with focused window.');
 	}
@@ -160,7 +221,7 @@ function update(w, callback) {
 		return;
 	}
 
-	getLastNonMinimized(father.id, function updateParent(parent) {
+	getLastNonMinimized(father, function updateParent(parent) {
 		var position = {
 			top: 0,
 			left: 0
@@ -168,34 +229,32 @@ function update(w, callback) {
 		if (parent) {
 			position.top = parent.top;
 			if (!w.children || !w.children.length) {
-				var emptyWidth = screen.width - parent.left - parent.width;
-				position.width = Math.min(emptyWidth, MAX_WIDTH);
+				var emptyWidth = screen.availWidth - parent.left - parent.width;
+				position.width = Math.min(emptyWidth, getMaxWidth());
 				if (NARROW_PARENT_IF_NOT_FIT && position.width < MIN_WIDTH) {
 					position.width = MIN_WIDTH;
 					parent.width += emptyWidth - MIN_WIDTH;
-					chrome.windows.update(father.id, {
+
+					father.update({
 						width: parent.width
-					}, function empty(){});
+					});
 				}
 			}
 			position.left = parent.left + parent.width;
 		}
-		chrome.windows.update(w.id, position, callback);
+		w.update(position, callback);
 	});
 }
 
 
-function getLastNonMinimized(id, callback) {
-	if (id < 0) {
+function getLastNonMinimized(w, callback) {
+	if (!w) {
 		callback(null);
 	}
-	chrome.windows.get(id, function(w) {
+	w.get(function(w) {
 		if (w.state === 'minimized') {
-			var parent = all.get(w.id).parent;
-			if (!parent) {
-				callback(null);
-			}
-			getLastNonMinimized(parent.id, callback);
+			var parent = w.parent;
+			getLastNonMinimized(parent, callback);
 		} else {
 			callback(w);
 		}
@@ -218,9 +277,8 @@ function updateChildren(children) {
 
 chrome.extension.onRequest.addListener(function requested(request) {
 	if (request.method === 'update') {
-		chrome.windows.getCurrent(function gotCurrent(w){
-			var win = all.get(w.id);
-			var children = getDescendantsOf(win);
+		all.getCurrent(function(w) {
+			var children = getDescendantsOf(w);
 			updateChildren(children);
 		});
 	} else if (request.method && request.popup) {
@@ -228,8 +286,16 @@ chrome.extension.onRequest.addListener(function requested(request) {
 	}
 });
 
+
 chrome.windows.onRemoved.addListener(function removed(windowId) {
 	var w = all.remove(windowId);
-	var children = getDescendantsOf(w);
-	updateChildren(children);
+	if (w.parent) {
+		w.parent.get(function(parent) {
+			var width = parent.width + w.width;
+			parent.update({width: Math.min(width, getMaxWidth())});
+		});
+	} else {
+		var children = getDescendantsOf(w);
+		updateChildren(children);
+	}
 });
