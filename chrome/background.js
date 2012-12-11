@@ -180,13 +180,13 @@ chrome.windows.onFocusChanged.addListener(function rememberFocusedId(id) {
 });
 
 
-chrome.windows.onCreated.addListener(function rememberCreated(w) {
-	var win = BrowserWindow.from(w);
+chrome.windows.onCreated.addListener(function rememberCreated(win) {
+	var w = BrowserWindow.from(win);
 	var focused = all[focusedId];
 	if (focused) {
 		if (w.type == 'normal' && focused.children[0] && focused.children[0].type == 'normal') {
 			var child = focused.children[0];
-			win.get({populate: true}, function(w) {
+			w.get({populate: true}, function(w) {
 				chrome.tabs.move([w.tabs[0].id], {
 					windowId: child.id,
 					index: -1
@@ -204,15 +204,31 @@ chrome.windows.onCreated.addListener(function rememberCreated(w) {
 			});
 			return;
 		} else {
-			win.parent = focused;
-			focused.children.push(win);
+			w.parent = focused;
+			focused.children.push(w);
 		}
 	} else {
 		console.warn('Something wrong with focused window.');
 	}
-	all.add(win);
-	update(win, function empty(){});
+
+	if (w.type == 'popup') {
+		w.get({populate: true}, function(w) {
+			if (w.tabs[0].url.indexOf('chrome-devtools://') === 0) {
+				addWindow(w);
+			}
+		});
+	} else {
+		addWindow(w);
+	}
+
 });
+
+
+function addWindow(w) {
+	all.add(w);
+	update(w, function empty(){});
+}
+
 
 function update(w, callback) {
 	var father = w.parent;
@@ -289,6 +305,9 @@ chrome.extension.onRequest.addListener(function requested(request) {
 
 chrome.windows.onRemoved.addListener(function removed(windowId) {
 	var w = all.remove(windowId);
+	if (!w) {
+		return;
+	}
 	if (w.parent) {
 		w.parent.get(function(parent) {
 			var width = parent.width + w.width;
