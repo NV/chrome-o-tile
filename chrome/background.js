@@ -182,6 +182,11 @@ chrome.windows.onFocusChanged.addListener(function rememberFocusedId(id) {
 
 chrome.windows.onCreated.addListener(function rememberCreated(win) {
 	var w = BrowserWindow.from(win);
+	if (w.left <= 0) {
+		// window is detached and dragged
+		all.add(w);
+		return;
+	}
 	var focused = all[focusedId];
 	if (focused) {
 		if (w.type == 'normal' && focused.children[0] && focused.children[0].type == 'normal') {
@@ -310,6 +315,7 @@ chrome.windows.onRemoved.addListener(function removed(windowId) {
 	}
 	if (w.parent) {
 		w.parent.get(function(parent) {
+			//FIXME: tile with leftmost children
 			var width = parent.width + w.width;
 			parent.update({width: Math.min(width, getMaxWidth())});
 		});
