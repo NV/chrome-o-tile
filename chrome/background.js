@@ -193,11 +193,6 @@ chrome.windows.onFocusChanged.addListener(function rememberFocusedId(id) {
 
 chrome.windows.onCreated.addListener(function rememberCreated(win) {
 	var w = BrowserWindow.from(win);
-	if (w.left <= 0) {
-		// window is detached and dragged
-		all.add(w);
-		return;
-	}
 	var focused = all.getLastFocused();
 	if (focused) {
 		if (w.type == 'normal' && focused.children[0] && focused.children[0].type == 'normal') {
