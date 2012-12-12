@@ -71,7 +71,9 @@ BrowserWindow.prototype.toString = function toString() {
 };
 
 
-function WindowsDict() {}
+function WindowsDict() {
+	this.lastFocusedId = 0;
+}
 
 WindowsDict.prototype.get = function(id, getInfo, callback) {
 	var w = this[id];
@@ -110,7 +112,7 @@ WindowsDict.prototype.remove = function remove(id) {
 					break;
 				}
 			}
-			w.parent.children = w.parent.children.concat(w.children);
+			[].push.apply(w.parent.children, w.children);
 		}
 		// Update a link to a new parent
 		for (var p = 0; p < w.children.length; p++) {
@@ -134,6 +136,25 @@ WindowsDict.prototype.getCurrent = function(callback) {
 	});
 };
 
+WindowsDict.prototype.getLastFocused = function() {
+	if (this.lastFocusedId !== 0) {
+		var lastFocused = this[this.lastFocusedId];
+		if (lastFocused) {
+			return lastFocused;
+		} else {
+			console.warn('lastFocusedId (' + this.lastFocusedId + ') is gone');
+			return null;
+		}
+	}
+};
+
+WindowsDict.prototype.appendToFocused = function(w) {
+	var focused = this.getLastFocused();
+	w.parent = focused;
+	focused.children.push(w);
+	this.add(w)
+};
+
 WindowsDict.prototype.toString = function toString() {
 	return Object.keys(this).map(function(key) {
 		return this[key];
@@ -142,41 +163,31 @@ WindowsDict.prototype.toString = function toString() {
 
 
 var all = new WindowsDict;
+
+
+chrome.windows.getLastFocused(function rememberFocused(w) {
+	if (w.id > 0) {
+		all.lastFocusedId = w.id;
+	}
+});
+
+
 chrome.windows.getAll(null, function rememberAll(windows) {
 	for (var i = 0; i < windows.length; i++) {
 		all.add(windows[i]);
 	}
 });
 
-function getDescendantsOf(w) {
-	var children = [];
-	if (w && w.children) {
-		for (var i=0; i<w.children.length; i++) {
-			children.push(w.children[i]);
-			children = children.concat(getDescendantsOf(w.children[i]));
-		}
-	} else {
-		console.error('No children');
-		debugger;
-	}
-	return children;
-}
 
 var OS_WINDOWS = navigator.platform.indexOf("Win") > -1;
 
-var focusedId;
-chrome.windows.getLastFocused(function rememberFocused(w) {
-	if (w.id > 0) {
-		focusedId = w.id;
-	}
-});
 chrome.windows.onFocusChanged.addListener(function rememberFocusedId(id) {
 	// http://crbug.com/39882
 	// http://crbug.com/44706
 	if (id === chrome.windows.WINDOW_ID_NONE || OS_WINDOWS && !all[id]) {
 		return null;
 	}
-	focusedId = id;
+	all.lastFocusedId = id;
 });
 
 
@@ -187,7 +198,7 @@ chrome.windows.onCreated.addListener(function rememberCreated(win) {
 		all.add(w);
 		return;
 	}
-	var focused = all[focusedId];
+	var focused = all.getLastFocused();
 	if (focused) {
 		if (w.type == 'normal' && focused.children[0] && focused.children[0].type == 'normal') {
 			var child = focused.children[0];
@@ -208,17 +219,16 @@ chrome.windows.onCreated.addListener(function rememberCreated(win) {
 				});
 			});
 			return;
-		} else {
-			w.parent = focused;
-			focused.children.push(w);
 		}
 	} else {
 		console.warn('Something wrong with focused window.');
 	}
 
 	if (w.type == 'popup') {
+		var prevFocusedId = all.lastFocusedId;
 		w.get({populate: true}, function(w) {
 			if (w.tabs[0].url.indexOf('chrome-devtools://') === 0) {
+				all.lastFocusedId = prevFocusedId;
 				addWindow(w);
 			}
 		});
@@ -230,7 +240,7 @@ chrome.windows.onCreated.addListener(function rememberCreated(win) {
 
 
 function addWindow(w) {
-	all.add(w);
+	all.appendToFocused(w);
 	update(w, function empty(){});
 }
 
@@ -293,6 +303,21 @@ function updateChildren(children) {
 		update(first, next);
 	}
 	next();
+}
+
+
+function getDescendantsOf(w) {
+	var children = [];
+	if (w && w.children) {
+		for (var i=0; i<w.children.length; i++) {
+			children.push(w.children[i]);
+			[].push.apply(children, getDescendantsOf(w.children[i]));
+		}
+	} else {
+		console.error('No children');
+		debugger;
+	}
+	return children;
 }
 
 
