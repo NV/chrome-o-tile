@@ -16,3 +16,15 @@ window.addEventListener('resize', function resized(e) {
 		timeoutId = 0;
 	}, 100);
 }, false);
+
+window.addEventListener('keydown', function(e) {
+	if (e.ctrlKey && e.altKey && e.shiftKey) {
+		if (e.which === 37) {
+			chrome.extension.sendRequest({method: 'left'});
+			e.preventDefault();
+		} else if (e.which === 39) {
+			chrome.extension.sendRequest({method: 'right'});
+			e.preventDefault();
+		}
+	}
+}, false);

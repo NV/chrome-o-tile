@@ -2,6 +2,7 @@
 
 var MIN_WIDTH = 400;
 var NARROW_PARENT_IF_NOT_FIT = true;
+var RESIZE_STEP_PX = 50;
 
 function getMaxWidth() {
 	return screen.availWidth;
@@ -264,7 +265,7 @@ function update(w, callback) {
 		if (parent) {
 			position.top = parent.top;
 			if (!w.children || !w.children.length) {
-				var emptyWidth = screen.availWidth - parent.left - parent.width;
+				var emptyWidth = getMaxWidth() - parent.left - parent.width;
 				position.width = Math.min(emptyWidth, getMaxWidth());
 				if (NARROW_PARENT_IF_NOT_FIT && position.width < MIN_WIDTH) {
 					position.width = MIN_WIDTH;
@@ -342,6 +343,45 @@ chrome.extension.onRequest.addListener(function requested(request) {
 			var children = getDescendantsOf(w);
 			updateParent(w);
 			updateChildren(children);
+		});
+	} else if (request.method === 'left') {
+		all.getCurrent(function(w) {
+			var left = w.left - RESIZE_STEP_PX;
+			if (left < 0) {
+				w.update({
+					width: w.width + left,
+					left: 0
+				});
+				var children = getDescendantsOf(w);
+				updateChildren(children);
+			} else {
+				w.update({
+					width: w.width + RESIZE_STEP_PX,
+					left: w.left - RESIZE_STEP_PX
+				});
+				updateParent(w);
+			}
+		});
+	} else if (request.method === 'right') {
+		all.getCurrent(function(w) {
+			var right = w.left + w.width + RESIZE_STEP_PX - getMaxWidth();
+			if (right > 0) {
+				var width = w.width - right;
+				if (width < MIN_WIDTH) {
+					return;
+				}
+				w.update({
+					width: w.width - right,
+					left: w.left + right
+				});
+				updateParent(w);
+			} else {
+				w.update({
+					width: w.width + RESIZE_STEP_PX
+				});
+				var children = getDescendantsOf(w);
+				updateChildren(children);
+			}
 		});
 	} else if (request.method && request.popup) {
 		chrome.windows[request.method](request.popup, function empty(){});
