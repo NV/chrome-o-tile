@@ -195,7 +195,11 @@ chrome.windows.onCreated.addListener(function rememberCreated(win) {
 	var w = BrowserWindow.from(win);
 	var focused = all.getLastFocused();
 	if (focused) {
-		if (w.type == 'normal' && focused.children[0] && focused.children[0].type == 'normal') {
+		if (focused.left === w.left) {
+			// Detatching and dragging
+			all.add(w);
+			return;
+		} else if (w.type == 'normal' && focused.children[0] && focused.children[0].type == 'normal') {
 			var child = focused.children[0];
 			w.get({populate: true}, function(w) {
 				chrome.tabs.move([w.tabs[0].id], {
