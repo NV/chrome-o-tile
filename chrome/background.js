@@ -327,10 +327,20 @@ function getDescendantsOf(w) {
 }
 
 
+function updateParent(w) {
+	var parent = w.parent;
+	if (!parent) {
+		return;
+	}
+	parent.update({width: w.left - parent.left});
+}
+
+
 chrome.extension.onRequest.addListener(function requested(request) {
 	if (request.method === 'resize') {
 		all.getCurrent(function(w) {
 			var children = getDescendantsOf(w);
+			updateParent(w);
 			updateChildren(children);
 		});
 	} else if (request.method && request.popup) {
