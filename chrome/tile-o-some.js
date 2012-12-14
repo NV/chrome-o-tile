@@ -1,28 +1,18 @@
 'use strict';
 
-// Simplified version of http://code.google.com/p/jquery-debounce/
-Function.prototype.debounce = function debounce(timeout, invokeAsap) {
-	var fn = this, timer;
-	return function debounced() {
-		var args = arguments;
-		var context = this;
-		invokeAsap && !timer && fn.apply(context, args);
-		clearTimeout(timer);
-		timer = setTimeout(function waiting() {
-			!invokeAsap && fn.apply(context, args);
-			timer = null;
-		}, timeout);
-	};
-};
+var prevWidth = window.outerWidth;
+var timeoutId = 0;
 
-var prevWidth = outerWidth;
-
-function resized(e) {
-	if (prevWidth === outerWidth) {
+window.addEventListener('resize', function resized(e) {
+	if (prevWidth === window.outerWidth) {
 		return;
 	}
-	chrome.extension.sendRequest({method: 'update'});
-	prevWidth = outerWidth;
-}
-
-window.addEventListener('resize', resized.debounce(100), false);
+	if (timeoutId !== 0) {
+		clearTimeout(timeoutId);
+	}
+	timeoutId = setTimeout(function debounced() {
+		chrome.extension.sendRequest({method: 'resize'});
+		prevWidth = window.outerWidth;
+		timeoutId = 0;
+	}, 100);
+}, false);

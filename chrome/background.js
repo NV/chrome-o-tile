@@ -328,7 +328,7 @@ function getDescendantsOf(w) {
 
 
 chrome.extension.onRequest.addListener(function requested(request) {
-	if (request.method === 'update') {
+	if (request.method === 'resize') {
 		all.getCurrent(function(w) {
 			var children = getDescendantsOf(w);
 			updateChildren(children);
