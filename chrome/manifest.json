@@ -6,6 +6,7 @@
 	"content_scripts": [
 		{
 			"js": ["tile-o-some.js"],
+			"run_at": "document_start",
 			"matches": [
 				"<all_urls>"
 			]
