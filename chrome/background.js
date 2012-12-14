@@ -1,6 +1,7 @@
 'use strict';
 
 var MIN_WIDTH = 400;
+var NEW_WINDOW_WIDTH = 1024;
 var NARROW_PARENT_IF_NOT_FIT = true;
 var RESIZE_STEP_PX = 50;
 
@@ -241,11 +242,11 @@ chrome.windows.onCreated.addListener(function rememberCreated(win) {
 
 function addWindow(w) {
 	all.appendToFocused(w);
-	update(w, function empty(){});
+	update(w, function empty(){}, true);
 }
 
 
-function update(w, callback) {
+function update(w, callback, isNew) {
 	if (w.state === 'minimized') {
 		callback();
 		return;
@@ -266,9 +267,10 @@ function update(w, callback) {
 			if (!w.children || !w.children.length) {
 				var emptyWidth = getMaxWidth() - parent.left - parent.width;
 				position.width = Math.min(emptyWidth, getMaxWidth());
-				if (NARROW_PARENT_IF_NOT_FIT && position.width < MIN_WIDTH) {
-					position.width = MIN_WIDTH;
-					parent.width += emptyWidth - MIN_WIDTH;
+				var preferedWidth = isNew ? NEW_WINDOW_WIDTH : MIN_WIDTH;
+				if (NARROW_PARENT_IF_NOT_FIT && position.width < preferedWidth) {
+					position.width = preferedWidth;
+					parent.width += emptyWidth - preferedWidth;
 
 					parent.update({
 						width: parent.width
