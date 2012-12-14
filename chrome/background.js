@@ -195,7 +195,7 @@ chrome.windows.onCreated.addListener(function rememberCreated(win) {
 	var w = BrowserWindow.from(win);
 	var focused = all.getLastFocused();
 	if (focused) {
-		if (focused.left === w.left) {
+		if (focused.left === w.left && w.state !== 'maximized') {
 			// Detatching and dragging
 			all.add(w);
 			return;
@@ -245,6 +245,11 @@ function addWindow(w) {
 
 
 function update(w, callback) {
+	if (w.state === 'minimized') {
+		callback();
+		return;
+	}
+
 	var father = w.parent;
 	if (!father) {
 		console.warn('No parent', w);
@@ -299,7 +304,9 @@ function updateChildren(children) {
 	function next() {
 		var first = children.shift();
 		if (!first) return;
-		update(first, next);
+		first.get(function(first) {
+			update(first, next);
+		});
 	}
 	next();
 }
