@@ -251,13 +251,12 @@ function update(w, callback) {
 		return;
 	}
 
-	var father = w.parent;
-	if (!father) {
-		console.warn('No parent', w);
+	var parent = w.parent;
+	if (!parent) {
 		return;
 	}
 
-	getLastNonMinimized(father, function updateParent(parent) {
+	getLastNonMinimized(parent, function updateParent(parent) {
 		var position = {
 			top: 0,
 			left: 0
@@ -271,7 +270,7 @@ function update(w, callback) {
 					position.width = MIN_WIDTH;
 					parent.width += emptyWidth - MIN_WIDTH;
 
-					father.update({
+					parent.update({
 						width: parent.width
 					});
 				}
